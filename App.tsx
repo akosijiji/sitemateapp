@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   FlatList,
+  TextInput,
   StatusBar,
   useColorScheme,
   View,
@@ -29,6 +30,9 @@ function App(): JSX.Element {
 
   const [isLoading, setLoading] = useState(false);
   const [newsData, setNewsData] = useState([]);
+
+  // For Search Bar
+  const [query, setQuery] = useState('');
 
   const API_ENDPOINT =
     'https://newsapi.org/v2/everything?q=tesla&from=2022-12-24&sortBy=publishedAt&apiKey=183daca270264bad86fc5b72972fb82a';
@@ -50,6 +54,29 @@ function App(): JSX.Element {
     fetchNews();
   }, []);
 
+  const renderHeader = () => {
+    return (
+      <TextInput
+        style={styles.input}
+        autoCapitalize="none"
+        autoCorrect={false}
+        editable
+        clearButtonMode="always"
+        value={query}
+        onChangeText={(queryText: string) => setQuery(queryText)}
+        placeholder="Search"
+      />
+    );
+  };
+
+  const filteredData = query // based on text, filter data and use filtered data
+    ? newsData.filter(item => {
+        const itemData = item.title.toLowerCase();
+        const textData = query.toLowerCase();
+        return itemData.indexOf(textData) > -1;
+      })
+    : newsData;
+
   const displayList = () => {
     if (isLoading) {
       return (
@@ -61,7 +88,9 @@ function App(): JSX.Element {
       return (
         <View style={styles.container}>
           <FlatList
-            data={newsData}
+            ListHeaderComponent={renderHeader()}
+            stickyHeaderIndices={[0]}
+            data={filteredData}
             showsVerticalScrollIndicator={false}
             keyExtractor={(item: any) => item.id}
             style={styles.list}
