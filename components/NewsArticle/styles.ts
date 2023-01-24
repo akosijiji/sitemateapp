@@ -42,12 +42,13 @@ export default StyleSheet.create({
     opacity: 0.7,
   },
   text: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     lineHeight: 15,
     color: '#fff',
     paddingBottom: 15,
     padding: 10,
+    marginBottom: 10,
   },
   timestamp: {
     position: 'absolute',
