@@ -10,16 +10,20 @@ import {
   SafeAreaView,
   ActivityIndicator,
   FlatList,
+  Modal,
   TextInput,
   StatusBar,
   useColorScheme,
   View,
+  Button,
+  Text,
 } from 'react-native';
 
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import styles from './styles';
 import axios from 'axios';
 import NewsArticle from './components/NewsArticle';
+import NetInfo from '@react-native-community/netinfo';
 
 function App(): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -30,19 +34,21 @@ function App(): JSX.Element {
 
   const [isLoading, setLoading] = useState(false);
   const [newsData, setNewsData] = useState([]);
+  const [isOffline, setOfflineStatus] = useState(false);
 
   // For Search Bar
   const [query, setQuery] = useState('');
 
   const API_ENDPOINT =
-    'https://newsapi.org/v2/everything?q=tesla&from=2022-12-24&sortBy=publishedAt&apiKey=183daca270264bad86fc5b72972fb82a';
+    'https://newsapi.org/v2/everything?apiKey=e536256b1e4840359594c037bd136bd6';
 
-  const fetchNews = async () => {
+  const searchNewsTitle = async () => {
     setLoading(true);
     try {
-      const newsData = await axios.get(API_ENDPOINT);
-      setNewsData(newsData.data.articles);
-      // console.log(newsData);
+      const newsDataResponse = await axios.get(API_ENDPOINT, {
+        params: {q: query},
+      });
+      setNewsData(newsDataResponse.data.articles);
     } catch (e) {
       console.log(e);
     } finally {
@@ -51,7 +57,11 @@ function App(): JSX.Element {
   };
 
   useEffect(() => {
-    fetchNews();
+    const removeNetInfoSubscription = NetInfo.addEventListener(state => {
+      const offline = !(state.isConnected && state.isInternetReachable);
+      setOfflineStatus(offline);
+    });
+    return () => removeNetInfoSubscription();
   }, []);
 
   const renderHeader = () => {
@@ -64,18 +74,11 @@ function App(): JSX.Element {
         clearButtonMode="always"
         value={query}
         onChangeText={(queryText: string) => setQuery(queryText)}
-        placeholder="Search"
+        onSubmitEditing={() => searchNewsTitle()}
+        placeholder="Search news"
       />
     );
   };
-
-  const filteredData = query // based on text, filter data and use filtered data
-    ? newsData.filter(item => {
-        const itemData = item.title.toLowerCase();
-        const textData = query.toLowerCase();
-        return itemData.indexOf(textData) > -1;
-      })
-    : newsData;
 
   const displayList = () => {
     if (isLoading) {
@@ -90,24 +93,45 @@ function App(): JSX.Element {
           <FlatList
             ListHeaderComponent={renderHeader()}
             stickyHeaderIndices={[0]}
-            data={filteredData}
+            data={newsData}
             showsVerticalScrollIndicator={false}
             keyExtractor={(item: any) => item.id}
             style={styles.list}
             renderItem={({item, index}: any) => (
               <NewsArticle post={item} key={index} />
             )}
+            ListEmptyComponent={
+              <Text style={styles.notfound}>No results found</Text>
+            }
           />
         </View>
       );
     }
   };
 
+  // eslint-disable-next-line react/no-unstable-nested-components
+  const NoInternetModal = ({show, onRetry, isRetrying}) => (
+    <Modal visible={show} style={styles.modal} animationInTiming={600}>
+      <View style={styles.modalContainer}>
+        <Text style={styles.modalTitle}>Connection Error</Text>
+        <Text style={styles.modalText}>
+          Oops! Looks like your device is not connected to the Internet.
+        </Text>
+        <Button onPress={onRetry} title={'Try Again'} disabled={isRetrying} />
+      </View>
+    </Modal>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
+      />
+      <NoInternetModal
+        show={isOffline}
+        onRetry={searchNewsTitle}
+        isRetrying={isLoading}
       />
       {displayList()}
     </SafeAreaView>
